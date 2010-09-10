@@ -11,6 +11,12 @@ var argv = process.argv,
     args = argv[3],
     files = argv.splice(4, argv.length);
 
+if(argv.length < 3){
+  console.log("Woah, there.  You must call restartr with a command, an argument for that command and a list of files to watch.")
+  console.log("Example:    restartr node server.js **/*.js");
+  process.exit();
+}
+
 var child = {};
 
 function onChangedFile(curr, prev){

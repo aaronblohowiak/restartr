@@ -11,6 +11,12 @@ put it in your path.
 
 In this example, "node" is the command, and "server.js" is the argument to this command.
 
+## Install
+
+`npm install restartr`
+
+or, just download the one file and put it in your $PATH
+
 ### Requirements
 node in your $PATH (tested with 0.2.0)
 
