@@ -1,0 +1,69 @@
+#!/usr/bin/env node
+
+var sys = require('sys'),
+    fs = require('fs'),
+    child_process = require('child_process'),
+    spawn = child_process.spawn,
+    exec = child_process.exec;
+
+var argv = process.argv,
+    cmd = argv[2],
+    args = argv[3],
+    files = argv.splice(4, argv.length);
+
+var child = {};
+
+function onChangedFile(curr, prev){
+  if(curr.mtime - prev.mtime == 0){
+    return;
+  };
+
+  if(child.pid){ 
+    console.log("files modified. sending sigkill to: ", child.pid);
+    exec("kill -9 "+child.pid, function(error, stdout, stderr){
+      if(error){
+        console.log("error trying to kill -9 the pid. exiting.");
+        process.exit();
+      }else{
+        console.log(stdout);
+        console.error(stderr);
+      }
+    });
+  }
+}
+
+sys.puts("Monitoring the following files for changes:", sys.inspect(files));
+
+function watch(f){
+  fs.watchFile(files[i], {persistent: false, interval: 75}, function(curr, prev){
+    callback(curr, prev);
+  });
+}
+
+for(var i = 0; i < files.length; i++){
+  watch(files[i]);
+}
+
+function start_child(){  
+  console.log("STARTING NEW CHILD");
+  child = spawn(cmd, [args]);
+
+  var me = child.pid;
+
+  console.log("NEW CHILD PID", child.pid);
+
+  child.stdout.on('data', function (data) {
+    console.log(data.toString());
+  });
+
+  child.stderr.on('data', function (data) {
+    console.error('stderr: ' + data.toString());
+  });
+
+  child.on('exit', function(){
+    console.log("CHILD EXITED: ", me);
+    start_child()
+  });
+}
+
+start_child();
