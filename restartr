@@ -42,7 +42,7 @@ sys.puts("Monitoring the following files for changes:", sys.inspect(files));
 
 function watch(f){
   fs.watchFile(files[i], {persistent: false, interval: 75}, function(curr, prev){
-    callback(curr, prev);
+    onChangedFile(curr, prev);
   });
 }
 
