@@ -1,0 +1,15 @@
+{
+    "name": "restartr",
+    "author": "Aaron Blohowiak <aaron.blohowiak@gmail.com>",
+    "description": "Restart your process when a file changes.",
+    "keywords": ["restart", "autoload", "reload", "restarter", "command-line", "cli", "terminal"],
+    "version": "0.1.3",
+    "homepage": "http://github.com/aaronblohowiak/restartr",
+    "bin": {"restartr" : "./restarter"},
+    "repository" : { 
+      "type" : "git",
+      "url" : "git://github.com/aaronblohowiak/restartr.git"
+    }
+    
+}
+
