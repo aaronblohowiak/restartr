@@ -3,7 +3,7 @@
     "author": "Aaron Blohowiak <aaron.blohowiak@gmail.com>",
     "description": "Restart your process when a file changes.",
     "keywords": ["restart", "autoload", "reload", "restarter", "command-line", "cli", "terminal"],
-    "version": "0.1.3",
+    "version": "0.1.5",
     "homepage": "http://github.com/aaronblohowiak/restartr",
     "bin": {"restartr" : "./restartr"},
     "repository" : { 
