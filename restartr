@@ -1,25 +1,35 @@
 #!/usr/bin/env node
 
 var sys = require('sys'),
+    inspect = sys.inspect,
     fs = require('fs'),
     child_process = require('child_process'),
     spawn = child_process.spawn,
     exec = child_process.exec;
 
-var argv = process.argv,
-    cmd = argv[2],
-    args = argv[3],
-    files = argv.splice(4, argv.length);
+var argv = require('optimist').argv;
 
-if(argv.length < 3){
-  console.log("Woah, there.  You must call restartr with a command, an argument for that command and a list of files to watch.")
-  console.log("Example:    restartr node server.js **/*.js");
+var cmd, args, files;
+
+function error(str){
+  console.log("Error.");
+  console.log(str);
+  console.log("Exiting.");
   process.exit();
 }
 
+function warn(str){
+  console.log(str);
+}
+
+var opts = parseCommandLineOpts(argv);
+cmd = opts.cmd;
+args = opts.args;
+files = opts.files;
+
 var child = {};
 
-function onChangedFile(curr, prev){
+function onChangedFile(f, curr, prev){
   if(curr.mtime - prev.mtime == 0){
     return;
   };
@@ -28,7 +38,7 @@ function onChangedFile(curr, prev){
     console.log("files modified. sending sigkill to: ", child.pid);
     exec("kill -9 "+child.pid, function(error, stdout, stderr){
       if(error){
-        console.log("error trying to kill -9 the pid. exiting.");
+        console.error("error trying to kill -9 the pid. exiting.");
         process.exit();
       }else{
         console.log(stdout);
@@ -42,7 +52,7 @@ sys.puts("Monitoring the following files for changes:", sys.inspect(files));
 
 function watch(f){
   fs.watchFile(files[i], {persistent: false, interval: 75}, function(curr, prev){
-    onChangedFile(curr, prev);
+    onChangedFile(f, curr, prev);
   });
 }
 
@@ -50,9 +60,9 @@ for(var i = 0; i < files.length; i++){
   watch(files[i]);
 }
 
-function start_child(){  
+function start_child(){
   console.log("STARTING NEW CHILD");
-  child = spawn(cmd, [args]);
+  child = spawn(cmd, args);
 
   var me = child.pid;
 
@@ -68,8 +78,82 @@ function start_child(){
 
   child.on('exit', function(){
     console.log("CHILD EXITED: ", me);
-    start_child()
+    start_child();
   });
 }
 
 start_child();
+
+function parseCommandLineOpts(argv){
+  var cmd, arg, args, file, files;
+  
+  if(argv.c && argv.c !== true){
+    cmd = argv.c;
+    arg = argv.a;
+    file = argv.file;
+
+    if(cmd instanceof Array){
+      error("You may only have one command. Instead, you specified the following: "+ inspect(cmd));
+    }
+
+    //[].concat(foo) coerces foo to an array
+    // with our options from the cmd line, we dont know if the args are arrays or not.
+    if(arg && arg !== true ){
+      args = [].concat(arg);
+      
+      //warn if any of the args contain a space.
+      var argParts, fixedArgString;
+      for (var i = args.length - 1; i >= 0; i--){
+        if(args[i].indexOf(" ") != -1){
+          argParts = args[i].split(" ");
+          fixedArgString = "";
+          for (var j = argParts.length - 1; j >= 0; j--){
+            fixedArgString = fixedArgString + ' -a "' + argParts[j] + '"';
+          };
+          
+          warn(" your argument: " + inspect(args[i]) + " contains a space. Are you sure you didn't mean to have: " + fixedArgString + " ?");
+        }
+      };
+    }else{
+      warn("No argument for "+ inspect(cmd));
+      if(cmd.indexOf(" ") != -1){
+        var cmdAry = cmd.split(" ");
+
+        cmdAry.unshift("-c");
+        var potentialArg = cmdAry.pop();
+        cmdAry.push("-a");
+        cmdAry.push(potentialArg);
+
+        var fixedCmdString = cmdAry.join(" ");
+        warn(" Your command contains a space. Are you suuuure you didn't mean to have : " + fixedCmdString + " ?");
+      }
+    }
+
+    if(file && file !== true){
+      files = [].concat(file);
+    }else{
+      files = [];
+    }
+
+    if(argv._){
+      files = files.concat(argv._);    
+    }
+
+    if(files.lenth == 0){
+      error(" You must include a file to watch! -file [file] or just append a list of files to the end of the options");
+    }
+  }else{
+    cmd = argv._[0];
+    arg = argv._[1];
+    files = argv._.splice(2, argv._.length);
+    console.log("No command (-c) arg passed to restartr. Will use \"" +cmd+ "\" as the command and \"" + arg + "\" as its argument");
+
+    args = [arg];
+  }
+  
+  return {
+    cmd : cmd,
+    args: args,
+    files: files
+  };
+}

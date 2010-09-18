@@ -1,0 +1,27 @@
+0.1.8 - Improved Options
+------------------------------
+  New optional syntax:
+  
+    restartr -c [cmd] [file1] [file2] ...
+    
+  If you want to pass some args to the child process:
+  
+    restartr -c [cmd] -a [arg1] -a [arg2] [file1] ... [fileN]
+  
+  You may still use the old syntax:
+  
+    restartr [cmd] [arg] [file1] ... [fileN]
+    
+  New Features:
+    You can now order the arguments however you'd like.
+    You can also now have 0-n arguments for the child process.
+
+  New Dependencies:
+    optimist 0.0.3 (will be installed when you `npm install restartr`)
+
+------------------------------
+0.1.7 -- First public release
+  Features:
+    order-based options
+    takes a command, an arg to that command and everything else is a file to watch
+    starts a child process with argv[1] and passes it argv[2]. restarts when files at the path argv[3..-1] change.
