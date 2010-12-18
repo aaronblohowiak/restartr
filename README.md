@@ -13,7 +13,7 @@ when the files change, it `kill -9`'s the process and starts another one.
 ## Usage:
 put it in your path.
 
-    restarter node server.js **/*.js
+    restartr node server.js **/*.js
 
 In this example, "node" is the command, and "server.js" is the argument to this command.
 
