@@ -11,7 +11,11 @@ retarter does two things: it launches a process, and it monitors files.
 when the files change, it `kill -9`'s the process and starts another one.
 
 ## Usage:
-put it in your path.
+put it in your path, then call it in a way that matches this pattern:
+
+    restarter [program name] [arg1 sent to program] [files to watch ...]
+
+Here is an example that uses bash expansion to save some keystrokes in listing the files to watch:
 
     restartr node server.js **/*.js
 
