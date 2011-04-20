@@ -5,15 +5,10 @@
     "keywords": ["restart", "autoload", "reload", "restarter", "command-line", "cli", "terminal"],
     "version": "0.1.8",
     "homepage": "http://github.com/aaronblohowiak/restartr",
-    "bin": {"restartr" : "./restartr"},
-    "repository" : { 
-      "type" : "git",
-      "url" : "git://github.com/aaronblohowiak/restartr.git"
-    },
-    
-    "dependencies": {
-      "optimist": "0.0.3"
-    }
-    
+    "bin": "./restartr",
+    "repository": "git://github.com/aaronblohowiak/restartr.git",
+   "dependencies": {
+    "optimist": "0.0.3"
+  }
 }
 
