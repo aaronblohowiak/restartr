@@ -13,7 +13,7 @@ when the files change, it `kill -9`'s the process and starts another one.
 ## Usage:
 put it in your path, then call it in a way that matches this pattern:
 
-    restarter [program name] [arg1 sent to program] [files to watch ...]
+    restartr [program name] [arg1 sent to program] [files to watch ...]
 
 Here is an example that uses bash expansion to save some keystrokes in listing the files to watch:
 
@@ -25,6 +25,13 @@ if you want to have 0-N args, use the explicit syntax:
 
     restartr -c [cmd] -a [arg1] -a [arg2] [file1] ... [fileN]
 
+## Immediate crash detection
+
+If the child process quits within one second, then wait for a file change to restart it. Otherwise, restart immediately.  You can override the definition of "immediately" by setting the ENV var `IMMEDIATE_CRASH_THRESHHOLD`
+
+    IMMEDIATE_CRASH_THRESHHOLD=100 restartr [program name] [arg1 sent to program] [files to watch ...]
+
+This will only wait to restart the program if it crashes in the first 100 ms.
 
 ## Install
 
