@@ -1,3 +1,8 @@
+0.1.9 - Fixed package.json
+------------------------------
+  Thanks to a pull request from chapel, you can now install from npm again!
+
+
 0.1.8 - Improved Options
 ------------------------------
   New optional syntax:
