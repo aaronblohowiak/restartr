@@ -1,3 +1,7 @@
+0.1.10 - Added battery-saving technique
+------------------------------
+  If the child process quits within one second, then wait for a file change to restart it. Otherwise, restart immediately.
+
 0.1.9 - Fixed package.json
 ------------------------------
   Thanks to a pull request from chapel, you can now install from npm again!

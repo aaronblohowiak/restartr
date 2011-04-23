@@ -11,23 +11,72 @@ var argv = require('optimist').argv;
 
 var cmd, args, files;
 
-function error(str){
-  console.log("Error.");
-  console.log(str);
-  console.log("Exiting.");
-  process.exit();
-}
-
-function warn(str){
-  console.log(str);
-}
-
+//parseCommandLineOpts defined way below because it is (too) huge
 var opts = parseCommandLineOpts(argv);
 cmd = opts.cmd;
 args = opts.args;
 files = opts.files;
 
 var child = {};
+
+sys.puts("Monitoring the following files for changes:", sys.inspect(files));
+
+watch_files();
+start_child();
+
+if(process.env.IMMEDIATE_CRASH_THRESHHOLD){
+  IMMEDIATE_CRASH_THRESHHOLD = parseInt(process.env.IMMEDIATE_CRASH_THRESHHOLD, 10);
+}else{
+  IMMEDIATE_CRASH_THRESHHOLD = 1000;
+}
+
+
+start_on_change = false;
+
+function start_child(){
+  console.log("STARTING NEW CHILD");
+  child = spawn(cmd, args);
+
+  var me = child.pid;
+  
+  var launched = (new Date).getTime();
+
+  console.log("NEW CHILD PID", me);
+
+  child.stdout.on('data', function (data) {
+    console.log(data.toString());
+  });
+
+  child.stderr.on('data', function (data) {
+    console.error('stderr: ' + data.toString());
+  });
+
+  child.on('exit', function(){
+    console.log("CHILD EXITED: ", me);
+    //maybe add some kind of wait for a change before restarting!
+    var crashed_immediately = (((new Date).getTime() - launched)  < IMMEDIATE_CRASH_THRESHHOLD)
+    if( crashed_immediately ){
+      warn("your process crashed immediately after restarting. waiting for a filechange to restart");
+      //the file changed handler will check for this flag and try to start the process on next file change if it is set.
+      start_on_change = true;
+    }else{
+      start_child();
+    }
+    
+  });
+}
+
+function watch_files(){
+  function watch(f){
+    fs.watchFile(f, {persistent: true, interval: 75}, function(curr, prev){
+      onChangedFile(f, curr, prev);
+    });
+  }
+
+  for(var i = 0; i < files.length; i++){
+    watch(files[i]);
+  }
+}
 
 function onChangedFile(f, curr, prev){
   if(curr.mtime - prev.mtime == 0){
@@ -45,44 +94,11 @@ function onChangedFile(f, curr, prev){
         console.error(stderr);
       }
     });
+  }else if(start_on_change){
+    start_on_change = false;
+    start_child();
   }
 }
-
-sys.puts("Monitoring the following files for changes:", sys.inspect(files));
-
-function watch(f){
-  fs.watchFile(files[i], {persistent: false, interval: 75}, function(curr, prev){
-    onChangedFile(f, curr, prev);
-  });
-}
-
-for(var i = 0; i < files.length; i++){
-  watch(files[i]);
-}
-
-function start_child(){
-  console.log("STARTING NEW CHILD");
-  child = spawn(cmd, args);
-
-  var me = child.pid;
-
-  console.log("NEW CHILD PID", child.pid);
-
-  child.stdout.on('data', function (data) {
-    console.log(data.toString());
-  });
-
-  child.stderr.on('data', function (data) {
-    console.error('stderr: ' + data.toString());
-  });
-
-  child.on('exit', function(){
-    console.log("CHILD EXITED: ", me);
-    start_child();
-  });
-}
-
-start_child();
 
 function parseCommandLineOpts(argv){
   var cmd, arg, args, file, files;
@@ -156,4 +172,15 @@ function parseCommandLineOpts(argv){
     args: args,
     files: files
   };
+}
+
+function error(str){
+  console.log("Error.");
+  console.log(str);
+  console.log("Exiting.");
+  process.exit();
+}
+
+function warn(str){
+  console.log(str);
 }
