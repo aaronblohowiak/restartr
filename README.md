@@ -44,8 +44,10 @@ or, just download the one file and put it in your $PATH
 node in your $PATH (tested with 0.2.0)
 
 ### Dependencies
-/installed automatically when using npm to install restartr/
+installed automatically when using npm to install restartr
+
 node-optimist 0.0.3
+
 colors  0.5.0
 
 ### TODO:
