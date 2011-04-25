@@ -8,7 +8,7 @@ This only supports POSIX systems (Mac OSX, Linux, BSD, Solaris &etc.)  No MS Win
 
 retarter does two things: it launches a process, and it monitors files.  
 
-when the files change, it `kill -9`'s the process and starts another one.
+when the files change, it kills the child process and restarts it.
 
 ## Usage:
 put it in your path, then call it in a way that matches this pattern:
@@ -27,7 +27,7 @@ if you want to have 0-N args, use the explicit syntax:
 
 ## Immediate crash detection
 
-If the child process quits within one second, then wait for a file change to restart it. Otherwise, restart immediately.  You can override the definition of "immediately" by setting the ENV var `IMMEDIATE_CRASH_THRESHHOLD`
+If the child process quits within 5 second, then wait for a file change to restart it. Otherwise, restart immediately.  You can override the definition of "immediately" by setting the ENV var `IMMEDIATE_CRASH_THRESHHOLD`
 
     IMMEDIATE_CRASH_THRESHHOLD=100 restartr [program name] [arg1 sent to program] [files to watch ...]
 
@@ -44,7 +44,11 @@ or, just download the one file and put it in your $PATH
 node in your $PATH (tested with 0.2.0)
 
 ### Dependencies
-node-optimist 0.0.3 (will be automatically installed if you use npm to install restartr)
+installed automatically when using npm to install restartr
+
+node-optimist 0.0.3
+
+colors  0.5.0
 
 ### TODO:
 Use Isaac's node_glob, or some other way to avoid shell expansion overrun.

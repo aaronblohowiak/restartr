@@ -1,106 +1,46 @@
 #!/usr/bin/env node
 
-var sys = require('sys'),
-    inspect = sys.inspect,
-    fs = require('fs'),
-    child_process = require('child_process'),
-    spawn = child_process.spawn,
-    exec = child_process.exec;
-
-var argv = require('optimist').argv;
-
-var cmd, args, files;
-
-//parseCommandLineOpts defined way below because it is (too) huge
-var opts = parseCommandLineOpts(argv);
-cmd = opts.cmd;
-args = opts.args;
-files = opts.files;
-
-var child = {};
-
-sys.puts("Monitoring the following files for changes:", sys.inspect(files));
-
-watch_files();
-start_child();
-
-if(process.env.IMMEDIATE_CRASH_THRESHHOLD){
-  IMMEDIATE_CRASH_THRESHHOLD = parseInt(process.env.IMMEDIATE_CRASH_THRESHHOLD, 10);
-}else{
-  IMMEDIATE_CRASH_THRESHHOLD = 1000;
-}
-
-
-start_on_change = false;
-
-function start_child(){
-  console.log("STARTING NEW CHILD");
-  child = spawn(cmd, args);
-
-  var me = child.pid;
-  
-  var launched = (new Date).getTime();
-
-  console.log("NEW CHILD PID", me);
-
-  child.stdout.on('data', function (data) {
-    console.log(data.toString());
-  });
-
-  child.stderr.on('data', function (data) {
-    console.error('stderr: ' + data.toString());
-  });
-
-  child.on('exit', function(){
-    console.log("CHILD EXITED: ", me);
-    //maybe add some kind of wait for a change before restarting!
-    var crashed_immediately = (((new Date).getTime() - launched)  < IMMEDIATE_CRASH_THRESHHOLD)
-    if( crashed_immediately ){
-      warn("your process crashed immediately after restarting. waiting for a filechange to restart");
-      //the file changed handler will check for this flag and try to start the process on next file change if it is set.
-      start_on_change = true;
-    }else{
-      start_child();
-    }
+var fs = require('fs'),
+    util = require('util'),
+    inspect = util.inspect,
+    colors = require('colors'),
+    argv = require('optimist').argv,
+    spawn = require('child_process').spawn,
+    peICT = process.env.IMMEDIATE_CRASH_THRESHHOLD,
+    crashThreshhold = peICT ? parseInt(peICT, 10) : 5000,
+    opts = parseCmdOpts(argv),
+    cmd = opts.cmd,
+    args = opts.args,
+    files = opts.files,
+    crashed = false;
     
+files.forEach(function(file) {
+  fs.watchFile(file, {persistent: true, interval: 75}, function(curr, prev) {
+    if (curr.mtime - prev.mtime == 0) return;
+    
+    log('Files modified, restarting', 'log');
+    child.kill('SIGHUP');
+    if (crashed) start();
   });
-}
+});
 
-function watch_files(){
-  function watch(f){
-    fs.watchFile(f, {persistent: true, interval: 75}, function(curr, prev){
-      onChangedFile(f, curr, prev);
-    });
-  }
-
-  for(var i = 0; i < files.length; i++){
-    watch(files[i]);
-  }
-}
-
-function onChangedFile(f, curr, prev){
-  if(curr.mtime - prev.mtime == 0){
-    return;
-  };
-
-  if(child.pid){ 
-    console.log("files modified. sending sigkill to: ", child.pid);
-    exec("kill -9 "+child.pid, function(error, stdout, stderr){
-      if(error){
-        console.error("error trying to kill -9 the pid. exiting.");
-        process.exit();
-      }else{
-        console.log(stdout);
-        console.error(stderr);
-      }
-    });
-  }else if(start_on_change){
-    start_on_change = false;
-    start_child();
-  }
-}
-
-function parseCommandLineOpts(argv){
+start = function() {
+  log('\nMonitoring the following files for changes:\n' + inspect(files) + '\n');    
+  log('STARTING NEW CHILD', 'log');
+  child = spawn(cmd, args, {customFds: [1, 1, 1]});
+  
+  var launched = (new Date).getTime(),
+      pid = child.pid;
+      
+  log('NEW CHILD PID ' + pid + '\n', 'log');
+  child.on('exit', function() {
+    log('\nCHILD EXITED: ' + pid + '\n', 'log');
+    crashed = (((new Date).getTime() - launched) < crashThreshhold);
+    crashed ? log('process crashed, waiting for file change', 'warn') : start();
+  }); 
+};
+   
+function parseCmdOpts(argv) {
   var cmd, arg, args, file, files;
   
   if(argv.c && argv.c !== true){
@@ -109,7 +49,7 @@ function parseCommandLineOpts(argv){
     file = argv.file;
 
     if(cmd instanceof Array){
-      error("You may only have one command. Instead, you specified the following: "+ inspect(cmd));
+      log("You may only have one command. Instead, you specified the following: "+ inspect(cmd), 'error');
     }
 
     //[].concat(foo) coerces foo to an array
@@ -127,11 +67,11 @@ function parseCommandLineOpts(argv){
             fixedArgString = fixedArgString + ' -a "' + argParts[j] + '"';
           };
           
-          warn(" your argument: " + inspect(args[i]) + " contains a space. Are you sure you didn't mean to have: " + fixedArgString + " ?");
+          log(inspect(args[i]) + " contains a space. Are you sure you didn't mean to have: " + fixedArgString + " ?", 'warn');
         }
       };
     }else{
-      warn("No argument for "+ inspect(cmd));
+      log("No argument for "+ inspect(cmd), 'warn');
       if(cmd.indexOf(" ") != -1){
         var cmdAry = cmd.split(" ");
 
@@ -141,7 +81,7 @@ function parseCommandLineOpts(argv){
         cmdAry.push(potentialArg);
 
         var fixedCmdString = cmdAry.join(" ");
-        warn(" Your command contains a space. Are you suuuure you didn't mean to have : " + fixedCmdString + " ?");
+        log("Your command contains a space. Are you suuuure you didn't mean to have : " + fixedCmdString + " ?", 'warn');
       }
     }
 
@@ -156,13 +96,13 @@ function parseCommandLineOpts(argv){
     }
 
     if(files.lenth == 0){
-      error(" You must include a file to watch! -file [file] or just append a list of files to the end of the options");
+      log("You must include a file to watch! -file [file] or just append a list of files to the end of the options", 'error');
     }
   }else{
     cmd = argv._[0];
     arg = argv._[1];
     files = argv._.splice(2, argv._.length);
-    console.log("No command (-c) arg passed to restartr. Will use \"" +cmd+ "\" as the command and \"" + arg + "\" as its argument");
+    log('No command (-c) arg passed to restartr. Will use "' +cmd+ '" as the command and "' + arg + '" as its argument', 'warn');
 
     args = [arg];
   }
@@ -172,15 +112,37 @@ function parseCommandLineOpts(argv){
     args: args,
     files: files
   };
-}
+};
 
-function error(str){
-  console.log("Error.");
-  console.log(str);
-  console.log("Exiting.");
+process.on('SIGINT', function() {
+  child.kill('SIGHUP');
+  process.exit(0);
+});
+
+process.on('uncaughtException', function (err) {
+  console.error('\n' + err.stack.bold.red + '\n');
+  child.kill('SIGHUP');
   process.exit();
-}
+});
 
-function warn(str){
-  console.log(str);
-}
+function log(msg, level) {
+  switch (level) {
+    case 'error':
+      console.error(msg.bold.red);
+      console.log('EXITING'.bold.red);
+      child.kill('SIGHUP');
+      process.exit();
+      break;
+    case 'warn':
+      console.log('Warning: '.bold.cyan + msg.bold.cyan + '\n');
+      break;
+    case 'log':
+      console.log(msg.bold.green);
+      break;
+    default:
+      console.log(msg);
+      break;
+  }
+};
+
+start();
