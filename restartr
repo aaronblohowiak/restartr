@@ -11,6 +11,10 @@ var fs = require('fs'),
     opts = parseCmdOpts(argv),
     cmd = opts.cmd,
     args = opts.args,
+    delay_wait = opts.delay_wait ? opts.delay_wait : 3000,
+    max_crash_restart = opts.max_crash_restart ? opts.max_crash_restart : 5,
+    restart_count = 0,
+    restart_id = 0,
     files = opts.files,
     crashed = false;
     
@@ -20,13 +24,19 @@ files.forEach(function(file) {
     
     log('Files modified, restarting', 'log');
     child.kill('SIGHUP');
+    if (restart_id) clearTimeout(restart_id);
     if (crashed) start();
   });
 });
 
+delay = function() {
+   restart_id = setTimeout(start, delay_wait)
+}
+
 start = function() {
   log('\nMonitoring the following files for changes:\n' + inspect(files) + '\n');    
   log('STARTING NEW CHILD', 'log');
+  restart_id = 0;
   child = spawn(cmd, args, {customFds: [1, 1, 1]});
   
   var launched = (new Date).getTime(),
@@ -36,7 +46,18 @@ start = function() {
   child.on('exit', function() {
     log('\nCHILD EXITED: ' + pid + '\n', 'log');
     crashed = (((new Date).getTime() - launched) < crashThreshhold);
-    crashed ? log('process crashed, waiting for file change', 'warn') : start();
+    if(crashed) {
+          restart_count += 1;
+          if(restart_count < max_crash_restart) {
+              log('process crashed. Retry count: ' + restart_count, 'warn');
+              delay();
+          } else {
+              log('process crashed, waiting for file change', 'warn');
+          }
+    } else {
+        restart_count = 0;
+        start();
+    }
   }); 
 };
    
